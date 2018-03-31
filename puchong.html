@@ -1,0 +1,526 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <title></title>
+    <meta name="description" content="">
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.12.4/jquery.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/3.5.5/d3.min.js"></script>
+  </head>
+
+<style>
+
+body {
+  font-family: "Source Sans Pro","Helvetica Neue",Helvetica,Arial,"Nimbus Sans L",sans-serif;
+  font-size: 150%;
+  line-height: 1.5em;
+  color: #33333c;
+      } 
+
+.background {
+  fill: #fff;
+  pointer-events: all;
+}
+
+.map-layer {
+  fill: #fff;
+  stroke: #fff;
+}
+
+.effect-layer{
+  pointer-events:none;
+}
+
+.dun-boundary {
+  fill: none;
+  stroke: #7e7e7e;
+  stroke-width:3px;
+}
+
+.par-boundary {
+  fill: none;
+  stroke: #7e7e7e;
+  stroke-width:1px;
+}
+
+text.big-text{
+  font-size: 20px;
+  font-weight: 400;
+}
+
+.effect-layer text, text.dummy-text{
+  font-size: 12px;
+}
+
+#bucket0 { background-color: #a50026; }
+#bucket1 { background-color: #d73027; }
+#bucket2 { background-color: #f46d43; }
+#bucket3 { background-color: #fdae61; }
+#bucket4 { background-color: #fee090; }
+#bucket5 { background-color: #e0f3f8; }
+#bucket6 { background-color: #abd9e9; }
+#bucket7 { background-color: #74add1; }
+#bucket8 { background-color: #4575b4; }
+#bucket9 { background-color: #313695; }
+
+.clicked {fill: black;}
+
+#legend-container {
+  margin-left:40px;
+  width: 58%;
+  padding:10px;
+}
+
+#legend-tickmark {
+  font-size: 18px;
+  color: #808080;
+  line-height: 18px;
+}
+
+#legend-title {
+  margin-bottom: 10px;
+  text-align: center;
+  position: relative;
+}
+
+#PR-label {
+  position: absolute;
+  left:0;
+  top:0;
+}
+#BN-label {
+  position: absolute;
+  right:12%;
+  top:0;
+}
+.colorblock, .tickmark {
+  width:80.4px;
+  height: 15px;
+}
+
+#legend-color, #legend-tickmark {
+  display:flex;
+  justify-content: flex-start;
+  margin-bottom: 5px;
+}
+#legend-tickmark{margin-left: -40.2px;}
+.tickmark {text-align: center;}
+
+text.label-Par {
+  font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  font-weight: 500;
+  font-size: 40px;
+}
+
+text.label-Reli {
+  font-weight: 400;
+  font-size: 30px;
+}
+
+/*bar chart styling*/
+#bar-container {
+    width: 600px;
+    height: 50px;
+    position: absolute;
+    top:290px;
+    left:44px;
+}
+
+svg {
+    width: 100%;
+    height: 100%;
+}
+
+text.value {
+    font-size: 18px;
+    fill: white;
+}
+
+.axisHorizontal path{
+    fill: none;
+}
+
+.axisHorizontal .tick line {
+    stroke-width: 1;
+    stroke: #808080;
+}
+
+.axisHorizontal text{
+    font-size: 18px;
+    fill: #808080;
+}
+
+.bar {
+    fill: #d73027;
+    fill-opacity: .9;
+}
+text.ylabel {
+    font-size: 90%;
+    fill: #33333c;
+}
+
+</style>
+<body>
+<div id="map-container-1">
+  <div id="bar-container"></div>
+</div>
+<div id="legend-container">
+  <div id="legend-title">Majority votes (GE 13)&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+    <div id="PR-label">PR</div>
+    <div id="BN-label">BN</div>
+  </div>
+  <div id="legend-color">
+    <div class="colorblock" id="bucket1"></div>
+    <div class="colorblock" id="bucket2"></div>
+    <div class="colorblock" id="bucket3"></div>
+    <div class="colorblock" id="bucket4"></div>
+    <div class="colorblock" id="bucket5"></div>
+    <div class="colorblock" id="bucket6"></div>
+    <div class="colorblock" id="bucket7"></div>
+    <div class="colorblock" id="bucket8"></div>
+  </div>
+  <div id="legend-tickmark">
+    <div class="tickmark">3345</div>
+    <div class="tickmark">2509</div>
+    <div class="tickmark">1673</div>
+    <div class="tickmark">836</div>
+    <div class="tickmark">0</div>
+    <div class="tickmark">836</div>
+    <div class="tickmark">1673</div>
+    <div class="tickmark">2509</div>
+    <div class="tickmark">3345</div>
+  </div>
+</div>
+<div id="map-container-2"></div>
+
+<script>
+
+var margin = {top: 10, left: 10, bottom: 10, right: 10},
+  width = window.outerWidth,
+  width = width - margin.left - margin.right,
+  mapRatio = .6,
+  height = width * mapRatio,
+  centered;
+
+// Define color scale
+var color = d3.scale.linear()
+  .domain([1, 20])
+  .clamp(true)
+  .range(['#fff', '#409A99']);
+
+var projection = d3.geo.mercator()
+  .scale(200000) //zoom level
+  // Center the Map in Colombia
+  .center([101.72044, 3.084298])
+  .translate([width / 2, height / 2]);
+
+var path = d3.geo.path()
+  .projection(projection);
+
+// Set svg width & height
+var svg = d3.select("#map-container-1").append("svg")
+  .attr('width', width)
+  .attr('height', height);
+
+var svg2 = d3.select("#map-container-2").append("svg")
+  .attr('width', width)
+  .attr('height', height);
+
+var svg3 = d3.select('#bar-container')
+  .append("svg")
+  .attr("width", width)
+  .attr("height", height);
+
+var g = svg.append('g');
+var g2 = svg2.append('g');
+
+var mapLayer1 = g.append('g')
+  .classed('map-layer', true);
+var mapLayer1_2 = g2.append('g')
+  .classed('map-layer', true);
+
+var mapLayer2 = g.append('g')
+  .classed('map-layer', true);
+var mapLayer2_2 = g2.append('g')
+  .classed('map-layer', true);
+
+var dummyText = g.append('text')
+  .classed('dummy-text', true)
+  .attr('x', 10)
+  .attr('y', 30)
+  .style('opacity', 0);
+
+var bigText = g.append('text')
+  .classed('big-text', true)
+  .attr('x', 20)
+  .attr('y', 45);
+
+var labelPar = g.append('text')
+  .classed('label-Par', true)
+  .attr('x', 40)
+  .attr('y', 280);
+var labelBefore = g.append('text')
+  .classed('label-Reli', true)
+  .attr('x', 40)
+  .attr('y', 320);
+var labelAfter = g.append('text')
+  .classed('label-Reli', true)
+  .attr('x', 40)
+  .attr('y', 320);
+var labelFix = g.append('text')
+  .classed('label-Reli', true)
+  .attr('x', 130)
+  .attr('y', 320);
+
+var breakpoint = d3.scale.threshold()
+    .domain([-3345,-2509,-1673,-836,0,836,1673,2509,3345])
+    .range(["#a50026","#d73027","#f46d43","#fdae61","#fee090","#e0f3f8","#abd9e9","#74add1","#4575b4","#313695"]); 
+
+//load old Par boundary
+// d3.json('puchong/2016_PAR_Puchong.geojson', function(error, boundary) {
+//     mapLayer1.selectAll('path')
+//         .data(boundary.features)
+//       .enter().append('path')
+//         .attr('d', path)
+//         .attr("class", "par-boundary");
+// });
+
+// Load map data
+d3.json('puchong/DM_DUN_PAR_after_Puchong-new.geojson', function(error, mapData_after) {
+  d3.json('puchong/2016_DMs_Puchong-new.geojson', function(error, mapData_before) {
+
+    function mapBefore() {
+    mapLayer1.selectAll('path')
+        .data(mapData_before.features)
+      .enter().append('path')
+        .attr('d', path)
+        .attr('vector-effect', 'non-scaling-stroke')
+        .attr("fill", function(d) { return breakpoint(d.properties.MAJ_BN); })
+        .on('mouseover', mouseover)
+        .on('mouseout', mouseout)
+        .on('click', clicked);
+    }
+    mapBefore();
+
+    function mapAfter() {
+      mapLayer2.selectAll('path')
+          .data(mapData_after.features)
+        .enter().append('path')
+          .attr('d', path)
+          .attr('vector-effect', 'non-scaling-stroke')
+          .attr("fill", function(d) { return breakpoint(d.properties.BN_MAJ); })
+          .style("opacity", 0)
+          .on('mouseover', mouseover)
+          .on('mouseout', mouseout)
+          .on('click', clicked);
+    }
+    mapAfter();
+
+    setInterval(function(){    
+      mapLayer1.selectAll('path')
+        .transition()
+        .duration(1500)
+        .style("opacity", 0);
+
+      labelBefore
+        .transition()
+        .duration(1500)
+        .style("opacity", 0);
+
+      mapLayer2.selectAll('path')
+        .transition()
+        .duration(1500)
+        .style("opacity", 1);
+
+      labelAfter
+        .transition()
+        .duration(1500)
+        .style("opacity", 1);  
+
+      barLength
+        .transition()
+        .duration(1500)
+        .attr("width", 364);
+      barValue
+        .transition()
+        .duration(1500)
+        .text("25,732")
+        .attr("x", 364);        
+
+      setTimeout(function(){
+        mapLayer1.selectAll('path')
+          .transition()
+          .duration(1500)
+          .style("opacity", 1);
+
+        labelBefore
+          .transition()
+          .duration(1500)
+          .style("opacity", 1);          
+
+        mapLayer2.selectAll('path')
+          .transition()
+          .duration(1500)
+          .style("opacity", 0);
+
+        labelAfter
+          .transition()
+          .duration(1500)
+          .style("opacity", 0);    
+
+        barLength
+          .transition()
+          .duration(1500)
+          .attr("width", 464);
+        barValue
+          .transition()
+          .duration(1500)
+          .text("32,802")
+          .attr("x", 464);          
+
+      },2500);  
+    },5000);
+  });
+});
+
+
+// When clicked, zoom in
+function clicked(d) {
+  var x, y, k;
+
+  // Compute centroid of the selected path
+  if (d && centered !== d) {
+    var centroid = path.centroid(d);
+    x = centroid[0];
+    y = centroid[1];
+    k = 4;
+    centered = d;
+  } else {
+    x = width / 2;
+    y = height / 2;
+    k = 1;
+    centered = null;
+  }
+
+  // Zoom
+  g.transition()
+    .duration(750)
+    .attr('transform', 'translate(' + width / 2 + ',' + height / 2 + ')scale(' + k + ')translate(' + -x + ',' + -y + ')');
+}
+
+function mouseover(d){
+  // Highlight hovered province
+  bigText.html(d.properties.NAMA_PARLI+ ' / ' + d.properties.NAMA_DUN + ' / ' + d.properties.NAMA_DM + ' / ' + d.properties.MAJ_BN + ' / ' + d.properties.BN_MAJ);
+  d3.select(this).transition().duration(300).style("opacity", 0.6);
+}
+
+function mouseout(d){
+  // Reset province color
+  d3.select(this)
+  .transition().duration(300)
+  .style("opacity", 1);
+
+  // Clear province name
+  bigText.text('');
+}
+
+labelPar.html('Puchong Parliament');
+labelBefore.html('Before')
+  .style("opacity", 1);
+labelAfter.html('After')
+  .style("opacity", 0);
+labelFix.html('redelineation');
+
+</script>
+
+
+<script>
+//script for bar chart
+    dataBar = [{label:"PR majority", value:32802},];
+
+    var axisMargin = 20,
+            margin2 = 15,
+            valueMargin = 10,
+            width2 = 600,
+            height2 = 50,
+            barHeight = (height2-axisMargin-margin2*1)*1.8/dataBar.length,
+            barPadding = (height2-axisMargin-margin2*1)*0.01/dataBar.length,
+            bar, svg3, scale, xAxis, labelWidth = 0;
+
+    var max = d3.max(dataBar, function(d) { return d.value; });
+
+    svg3 = d3.select('#bar-container')
+            .append("svg")
+            .attr("width", width2)
+            .attr("height", height2);
+
+    bar = svg3.selectAll("g")
+            .data(dataBar)
+            .enter()
+            .append("g");
+
+    bar.attr("class", "bar")
+            .attr("cx",0)
+            .attr("transform", function(d, i) {
+                return "translate(" + margin2 + "," + (i * (barHeight + barPadding) + barPadding) + ")";
+            });
+    //yAxis label
+    bar.append("text")
+            .attr("class", "ylabel")
+            .attr("x", -10)
+            .attr("y", barHeight / 2)
+            .attr("dy", ".35em") //vertical align middle
+            .text(function(d){
+                return d.label;
+            }).each(function() {
+        labelWidth = Math.ceil(Math.max(labelWidth, this.getBBox().width));
+    });
+
+    scale = d3.scale.linear()
+            .domain([0, max])
+            .range([0, width2 - margin2*2 - labelWidth]);
+
+    xAxis = d3.svg.axis()
+            .scale(scale)
+            .ticks(4)
+            .tickSize(-height2 + 0*margin2 + axisMargin)
+            .orient("bottom");
+
+    var barLength = bar.append("rect")
+            .attr("transform", "translate("+labelWidth+", 0)")
+            .attr("height", barHeight)
+            .attr("width", 464);
+    //label inside bar
+    var barValue = bar.append("text")
+            .attr("class", "value")
+            .attr("y", barHeight / 2)
+            .attr("dx", -valueMargin + labelWidth) //margin right
+            .attr("dy", ".35em") //vertical align middle
+            .attr("text-anchor", "end")
+            .text(function(d){
+                return (addThousandSeparator(d.value));
+            })
+            .attr("x", function(d){
+                var width2 = this.getBBox().width;
+                return Math.max(width2 + valueMargin, scale(d.value));
+            });
+
+    svg3.insert("g",":first-child")
+            .attr("class", "axisHorizontal")
+            .attr("transform", "translate(" + (margin2 + labelWidth) + ","+ (height2 - axisMargin)+")")
+            .call(xAxis);
+
+  function addThousandSeparator(nStr) {
+    nStr += '';
+    var x = nStr.split('.');
+    var x1 = x[0];
+    var x2 = x.length > 1 ? '.' + x[1] : '';
+    var rgx = /(\d+)(\d{3})/;
+    while (rgx.test(x1)) {
+        x1 = x1.replace(rgx, '$1' + ',' + '$2');
+    }
+    return x1 + x2;
+  }
+</script>

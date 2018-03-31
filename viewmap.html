@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <title></title>
+    <meta name="description" content="">
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.12.4/jquery.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/3.5.5/d3.min.js"></script>
+  </head>
+
+<style>
+
+body {
+  font-family: "Source Sans Pro","Helvetica Neue",Helvetica,Arial,"Nimbus Sans L",sans-serif;
+  font-size: 150%;
+  line-height: 1.5em;
+  color: #33333c;
+      } 
+
+.background {
+  fill: #fff;
+  pointer-events: all;
+}
+
+.map-layer {
+  fill: #fff;
+  stroke: #fff;
+}
+
+.effect-layer{
+  pointer-events:none;
+}
+
+.dun-boundary {
+  fill: none;
+  stroke: #7e7e7e;
+  stroke-width:3px;
+}
+
+.par-boundary {
+  fill: none;
+  stroke: #7e7e7e;
+  stroke-width:1px;
+}
+
+text.big-text{
+  font-size: 20px;
+  font-weight: 400;
+}
+
+.effect-layer text, text.dummy-text{
+  font-size: 12px;
+}
+
+#bucket0 { background-color: #a50026; }
+#bucket1 { background-color: #d73027; }
+#bucket2 { background-color: #f46d43; }
+#bucket3 { background-color: #fdae61; }
+#bucket4 { background-color: #fee090; }
+#bucket5 { background-color: #e0f3f8; }
+#bucket6 { background-color: #abd9e9; }
+#bucket7 { background-color: #74add1; }
+#bucket8 { background-color: #4575b4; }
+#bucket9 { background-color: #313695; }
+
+.clicked {fill: black;}
+</style>
+<body>
+<div id="map-container-1"></div>
+<div id="map-container-2"></div>
+
+<script>
+
+var margin = {top: 10, left: 10, bottom: 10, right: 10},
+  width = window.outerWidth,
+  width = width - margin.left - margin.right,
+  mapRatio = .6,
+  height = width * mapRatio,
+  centered;
+
+// Define color scale
+var color = d3.scale.linear()
+  .domain([1, 20])
+  .clamp(true)
+  .range(['#fff', '#409A99']);
+
+var projection = d3.geo.mercator()
+  .scale(200000) //zoom level
+  // Center the Map in Colombia
+  .center([101.72044, 3.084298])
+  .translate([width / 2, height / 2]);
+
+var path = d3.geo.path()
+  .projection(projection);
+
+// Set svg width & height
+var svg = d3.select("#map-container-1").append("svg")
+  .attr('width', width)
+  .attr('height', height);
+
+var svg2 = d3.select("#map-container-2").append("svg")
+  .attr('width', width)
+  .attr('height', height);
+
+var svg3 = d3.select('#bar-container')
+  .append("svg")
+  .attr("width", width)
+  .attr("height", height);
+
+var g = svg.append('g');
+var g2 = svg2.append('g');
+
+var mapLayer1 = g.append('g')
+  .classed('map-layer', true);
+
+var mapLayer2 = g2.append('g')
+  .classed('map-layer', true);
+
+var bigText = g2.append('text')
+  .classed('big-text', true)
+  .attr('x', 20)
+  .attr('y', 45);
+
+var breakpoint = d3.scale.threshold()
+    .domain([-3345,-2509,-1673,-836,0,836,1673,2509,3345])
+    .range(["#a50026","#d73027","#f46d43","#fdae61","#fee090","#e0f3f8","#abd9e9","#74add1","#4575b4","#313695"]); 
+
+//load old Par boundary
+// d3.json('puchong/2016_PAR_Puchong.geojson', function(error, boundary) {
+//     mapLayer1.selectAll('path')
+//         .data(boundary.features)
+//       .enter().append('path')
+//         .attr('d', path)
+//         .attr("class", "par-boundary");
+// });
+
+// Load map data
+d3.json('puchong/DM_Seri-Serdang_before.geojson', function(error, mapData_before) {
+  // var selectedData = mapData_before["features"];
+  // console.log("data = " + JSON.stringify(selectedData));
+  // var selectedObj = jQuery.grep(selectedData, function (n, i) {
+  //   return (n.properties.NAMA_DUN ==  "SERI SERDANG");
+  // },false);
+
+  // console.log("selectedObj = " + JSON.stringify(selectedObj));
+
+
+    function mapBefore() {
+      mapLayer1.selectAll('path')
+          .data(mapData_before.features)
+        .enter().append('path')
+          .attr('d', path)
+          .attr('vector-effect', 'non-scaling-stroke')
+          .attr("fill", function(d) { return breakpoint(d.properties.BILANGAN_P); })
+          .on('mouseover', mouseover)
+          .on('mouseout', mouseout)
+          .on('click', clicked);
+    }
+    mapBefore();
+});
+
+d3.json('puchong/DM_Seri-Serdang_after.geojson', function(error, mapData_after) {
+    function mapAfter() {
+      mapLayer2.selectAll('path')
+          .data(mapData_after.features)
+        .enter().append('path')
+          .attr('d', path)
+          .attr('vector-effect', 'non-scaling-stroke')
+          .attr("fill", function(d) { return breakpoint(d.properties.BILANGAN_P); })
+          .on('mouseover', mouseover)
+          .on('mouseout', mouseout)
+          .on('click', clicked);
+    }
+    mapAfter();
+});
+
+
+// When clicked, zoom in
+function clicked(d) {
+  var x, y, k;
+
+  // Compute centroid of the selected path
+  if (d && centered !== d) {
+    var centroid = path.centroid(d);
+    x = centroid[0];
+    y = centroid[1];
+    k = 4;
+    centered = d;
+  } else {
+    x = width / 2;
+    y = height / 2;
+    k = 1;
+    centered = null;
+  }
+
+  // Zoom
+  g.transition()
+    .duration(750)
+    .attr('transform', 'translate(' + width / 2 + ',' + height / 2 + ')scale(' + k + ')translate(' + -x + ',' + -y + ')');
+}
+
+function mouseover(d){
+  // Highlight hovered province
+  bigText.html(d.properties.NAMA_PARLI+ ' / ' + d.properties.NAMA_DUN + ' / ' + d.properties.NAMA_DM + ' / ' + d.properties.UNDI_BN + ' / ' + d.properties.BN_UNDI);
+  d3.select(this).transition().duration(300).style("opacity", 0.6);
+}
+
+function mouseout(d){
+  // Reset province color
+  d3.select(this)
+  .transition().duration(300)
+  .style("opacity", 1);
+
+  // Clear province name
+  bigText.text('');
+}
+
+</script>
