@@ -182,15 +182,15 @@ text.ylabel {
     <div class="colorblock" id="bucket8"></div>
   </div>
   <div id="legend-tickmark">
-    <div class="tickmark">3345</div>
-    <div class="tickmark">2509</div>
-    <div class="tickmark">1673</div>
-    <div class="tickmark">836</div>
+    <div class="tickmark">2800</div>
+    <div class="tickmark">2100</div>
+    <div class="tickmark">1400</div>
+    <div class="tickmark">700</div>
     <div class="tickmark">0</div>
-    <div class="tickmark">836</div>
-    <div class="tickmark">1673</div>
-    <div class="tickmark">2509</div>
-    <div class="tickmark">3345</div>
+    <div class="tickmark">700</div>
+    <div class="tickmark">1400</div>
+    <div class="tickmark">2100</div>
+    <div class="tickmark">2800</div>
   </div>
 </div>
 <div id="map-container-2"></div>
@@ -275,7 +275,7 @@ var labelFix = g.append('text')
   .attr('y', 320);
 
 var breakpoint = d3.scale.threshold()
-    .domain([-3345,-2509,-1673,-836,0,836,1673,2509,3345])
+    .domain([-2800,-2100,-1400,-700,0,700,1400,2100,2800])
     .range(["#a50026","#d73027","#f46d43","#fdae61","#fee090","#e0f3f8","#abd9e9","#74add1","#4575b4","#313695"]); 
 
 //load old Par boundary
@@ -288,8 +288,8 @@ var breakpoint = d3.scale.threshold()
 // });
 
 // Load map data
-d3.json('puchong/DM_DUN_PAR_after_Puchong-new.geojson', function(error, mapData_after) {
-  d3.json('puchong/2016_DMs_Puchong-new.geojson', function(error, mapData_before) {
+d3.json('puchong/DM_Seri-Serdang_after.geojson', function(error, mapData_after) {
+  d3.json('puchong/DM_Seri-Serdang_before.geojson', function(error, mapData_before) {
 
     function mapBefore() {
     mapLayer1.selectAll('path')
@@ -297,7 +297,7 @@ d3.json('puchong/DM_DUN_PAR_after_Puchong-new.geojson', function(error, mapData_
       .enter().append('path')
         .attr('d', path)
         .attr('vector-effect', 'non-scaling-stroke')
-        .attr("fill", function(d) { return breakpoint(d.properties.UNDI_BN); })
+        .attr("fill", function(d) { return breakpoint(d.properties.MAJ_BN); })
         .on('mouseover', mouseover)
         .on('mouseout', mouseout)
         .on('click', clicked);
@@ -310,7 +310,7 @@ d3.json('puchong/DM_DUN_PAR_after_Puchong-new.geojson', function(error, mapData_
         .enter().append('path')
           .attr('d', path)
           .attr('vector-effect', 'non-scaling-stroke')
-          .attr("fill", function(d) { return breakpoint(d.properties.BN_UNDI); })
+          .attr("fill", function(d) { return breakpoint(d.properties.BN_MAJ); })
           .style("opacity", 0)
           .on('mouseover', mouseover)
           .on('mouseout', mouseout)
@@ -342,12 +342,12 @@ d3.json('puchong/DM_DUN_PAR_after_Puchong-new.geojson', function(error, mapData_
       barLength
         .transition()
         .duration(1500)
-        .attr("width", 364);
+        .attr("width", 106);
       barValue
         .transition()
         .duration(1500)
-        .text("25,732")
-        .attr("x", 364);        
+        .text("3,707")
+        .attr("x", 106);        
 
       setTimeout(function(){
         mapLayer1.selectAll('path')
@@ -377,7 +377,7 @@ d3.json('puchong/DM_DUN_PAR_after_Puchong-new.geojson', function(error, mapData_
         barValue
           .transition()
           .duration(1500)
-          .text("32,802")
+          .text("16,251")
           .attr("x", 464);          
 
       },2500);  
@@ -412,7 +412,7 @@ function clicked(d) {
 
 function mouseover(d){
   // Highlight hovered province
-  bigText.html(d.properties.NAMA_PARLI+ ' / ' + d.properties.NAMA_DUN + ' / ' + d.properties.NAMA_DM + ' / ' + d.properties.UNDI_BN + ' / ' + d.properties.BN_UNDI);
+  bigText.html(d.properties.NAMA_PARLI+ ' / ' + d.properties.NAMA_DUN + ' / ' + d.properties.NAMA_DM + ' / ' + d.properties.MAJ_BN + ' / ' + d.properties.BN_MAJ);
   d3.select(this).transition().duration(300).style("opacity", 0.6);
 }
 
@@ -426,7 +426,7 @@ function mouseout(d){
   bigText.text('');
 }
 
-labelPar.html('Puchong Parliament');
+labelPar.html('Seri Serdang State Seat');
 labelBefore.html('Before')
   .style("opacity", 1);
 labelAfter.html('After')
@@ -438,7 +438,7 @@ labelFix.html('redelineation');
 
 <script>
 //script for bar chart
-    dataBar = [{label:"PR majority", value:32802},];
+    dataBar = [{label:"PR majority", value:16251},];
 
     var axisMargin = 20,
             margin2 = 15,
